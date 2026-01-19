@@ -1,5 +1,7 @@
-import {integer, pgTable, text, uuid, timestamp, boolean, index} from "drizzle-orm/pg-core";
+import {integer, pgTable, text, uuid, timestamp, boolean, index, pgEnum} from "drizzle-orm/pg-core";
 import * as t from "drizzle-orm/pg-core";
+import {DAYS_OF_WEEKS} from "@/data/constants";
+import {relations} from "drizzle-orm";
 
 const createdAt = timestamp("createdAt").notNull().defaultNow()
 const updatedAt = timestamp("updatedAt").notNull().defaultNow().$onUpdate(() => new Date())
@@ -22,16 +24,19 @@ export const EventTable = pgTable("events", {
 export const ScheduleTable = pgTable("schedules", {
   id : uuid("id").primaryKey().defaultRandom(),
   clerkUserId : text("clerkUserId").notNull().unique(),
-  Timezone : text("Timezone").notNull(),
-  createdAt,
-  updatedAt
+  timezone : text("Timezone").notNull(),
 })
 
+export const ScheduleRelations = relations(ScheduleTable, ({many}) => ({
+    availabilities : many(ScheduleAvailabilitiesTable)
+}))
 
-export const scheduleAvailabilitiesTable = pgTable("scheduleAvailabilities", {
+export const Schedule_Days_of_week = pgEnum("days", DAYS_OF_WEEKS)
+
+export const ScheduleAvailabilitiesTable = pgTable("scheduleAvailabilities", {
     id : uuid("id").primaryKey().defaultRandom(),
     scheduleId : uuid("scheduleId").notNull().references(() => ScheduleTable.id),
-    dayOfWeek : integer("dayOfWeek").notNull(), // 0 (Sunday) to 6 (Saturday)
+    dayOfWeek : Schedule_Days_of_week("dayOfWeek").notNull(), // 0 (Sunday) to 6 (Saturday)
     startTime : text("startTime").notNull(), // "09:00"
     endTime : text("endTime").notNull(),   // "17:00"
     createdAt,
@@ -41,6 +46,14 @@ export const scheduleAvailabilitiesTable = pgTable("scheduleAvailabilities", {
       index("scheduleIdIndex").on(table.scheduleId)
     ]
 );
+
+const ScheduleAvailabilitiesRelations = relations(ScheduleAvailabilitiesTable, ({one})=>(
+    { schedule : one(ScheduleTable, {
+            fields: [ScheduleAvailabilitiesTable.scheduleId],
+            references : [ScheduleTable.id]
+        })
+    })
+)
 
 
 
